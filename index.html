@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hermes Market Intelligence — Polymarket Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 40px 0; border-bottom: 1px solid #1a1a2e; margin-bottom: 30px; }
+        h1 { font-size: 2.5em; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .subtitle { color: #888; margin-top: 10px; font-size: 1.1em; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #12121a; border: 1px solid #1a1a2e; border-radius: 12px; padding: 20px; text-align: center; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { color: #888; margin-top: 5px; font-size: 0.9em; }
+        .markets { display: grid; gap: 15px; }
+        .market { background: #12121a; border: 1px solid #1a1a2e; border-radius: 12px; padding: 20px; transition: border-color 0.2s; cursor: pointer; }
+        .market:hover { border-color: #667eea; }
+        .market-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; }
+        .market-question { font-size: 1.1em; font-weight: 600; flex: 1; margin-right: 20px; line-height: 1.4; }
+        .market-odds { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 1.1em; white-space: nowrap; }
+        .market-meta { display: flex; gap: 20px; color: #888; font-size: 0.85em; }
+        .market-meta span { display: flex; align-items: center; gap: 5px; }
+        .bar { height: 8px; background: #1a1a2e; border-radius: 4px; overflow: hidden; margin-top: 15px; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); border-radius: 4px; }
+        .section-title { font-size: 1.5em; margin: 40px 0 20px; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .refresh-btn { background: #1a1a2e; border: 1px solid #2a2a3e; color: #888; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9em; }
+        .refresh-btn:hover { background: #2a2a3e; color: #fff; }
+        footer { text-align: center; padding: 40px 0; color: #555; border-top: 1px solid #1a1a2e; margin-top: 40px; }
+        .sponsor-btn { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+        .sponsor-btn:hover { opacity: 0.9; }
+        .loading { text-align: center; padding: 60px; color: #666; }
+        .error { background: #2a1a1a; border: 1px solid #4a2a2a; padding: 20px; border-radius: 12px; color: #ff6b6b; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .filter-btns { display: flex; gap: 10px; }
+        .filter-btn { background: #1a1a2e; border: 1px solid #2a2a3e; color: #888; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .filter-btn.active { background: #667eea; color: #fff; border-color: #667eea; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8em; }
+            .market-header { flex-direction: column; }
+            .market-odds { margin-top: 10px; align-self: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hermes Market Intelligence</h1>
+            <p class="subtitle">Real-time Polymarket odds, on-chain prediction markets, autonomous analysis</p>
+            <a href="https://github.com/sponsors/uspourmirza-boop" class="sponsor-btn" target="_blank">⭐ Sponsor This Project</a>
+        </header>
+
+        <div id="stats" class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalMarkets">-</div>
+                <div class="stat-label">Active Markets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalVolume">-</div>
+                <div class="stat-label">24h Volume</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgLiquidity">-</div>
+                <div class="stat-label">Avg Liquidity</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lastUpdated">-</div>
+                <div class="stat-label">Last Updated</div>
+            </div>
+        </div>
+
+        <div class="top-bar">
+            <h2 class="section-title">🔥 Trending Markets</h2>
+            <div class="filter-btns">
+                <button class="filter-btn active" data-sort="volume">By Volume</button>
+                <button class="filter-btn" data-sort="liquidity">By Liquidity</button>
+                <button class="filter-btn" data-sort="recent">Recent</button>
+                <button class="refresh-btn" onclick="loadMarkets()">↻ Refresh</button>
+            </div>
+        </div>
+
+        <div id="markets" class="markets">
+            <div class="loading">Loading markets...</div>
+        </div>
+
+        <div class="top-bar">
+            <h2 class="section-title">📊 Market Movers (24h)</h2>
+        </div>
+        <div id="movers" class="markets">
+            <div class="loading">Loading movers...</div>
+        </div>
+
+        <div class="top-bar">
+            <h2 class="section-title">📈 OKX Market Prices</h2>
+            <button class="refresh-btn" onclick="loadPrices()">↻ Refresh</button>
+        </div>
+        <div id="prices" class="markets">
+            <div class="loading">Loading prices...</div>
+        </div>
+
+        <footer>
+            <p>Built by Hermes Agent • Open Source • <a href="https://github.com/uspourmirza-boop/hermes-engine" style="color:#667eea">View on GitHub</a></p>
+            <p style="margin-top:10px">Data: Polymarket Gamma API, OKX Public API</p>
+        </footer>
+    </div>
+
+    <script>
+        let marketsData = [];
+        let currentSort = 'volume';
+
+        function formatCurrency(num) {
+            if (num >= 1e9) return '$' + (num/1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return '$' + (num/1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return '$' + (num/1e3).toFixed(1) + 'K';
+            return '$' + num.toFixed(2);
+        }
+
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diff = now - d;
+            if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+            return d.toLocaleDateString();
+        }
+
+        async function loadMarkets() {
+            const container = document.getElementById('markets');
+            container.innerHTML = '<div class="loading">Loading markets...</div>';
+
+            try {
+                // Polymarket Gamma API - get active markets
+                const response = await fetch('https://gamma-api.polymarket.com/markets?closed=false&active=true&limit=20&order=volume24hr&ascending=false');
+                const data = await response.json();
+                marketsData = data.slice(0, 20);
+
+                // Calculate stats
+                const totalMarkets = data.length;
+                const totalVolume = data.reduce((sum, m) => sum + (m.volume24hr || 0), 0);
+                const avgLiq = data.reduce((sum, m) => sum + (m.liquidity || 0), 0) / data.length;
+
+                document.getElementById('totalMarkets').textContent = totalMarkets.toLocaleString();
+                document.getElementById('totalVolume').textContent = formatCurrency(totalVolume);
+                document.getElementById('avgLiquidity').textContent = formatCurrency(avgLiq);
+                document.getElementById('lastUpdated').textContent = 'Now';
+
+                renderMarkets();
+                loadMovers();
+            } catch (e) {
+                container.innerHTML = '<div class="error">Error loading markets: ' + e.message + '</div>';
+                console.error(e);
+            }
+        }
+
+        function renderMarkets() {
+            const container = document.getElementById('markets');
+            let sorted = [...marketsData];
+
+            if (currentSort === 'volume') {
+                sorted.sort((a, b) => (b.volume24hr || 0) - (a.volume24hr || 0));
+            } else if (currentSort === 'liquidity') {
+                sorted.sort((a, b) => (b.liquidity || 0) - (a.liquidity || 0));
+            } else if (currentSort === 'recent') {
+                sorted.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+            }
+
+            container.innerHTML = sorted.slice(0, 10).map(m => {
+                const question = m.question || 'Unknown';
+                const outcomes = m.outcomePrices ? JSON.parse(m.outcomePrices) : [];
+                const yesPct = outcomes[0] ? (parseFloat(outcomes[0]) * 100).toFixed(1) : '-';
+                const volume = m.volume24hr || 0;
+                const liquidity = m.liquidity || 0;
+                const slug = m.slug || '';
+
+                return `
+                    <div class="market" onclick="window.open('https://polymarket.com/event/${slug}', '_blank')">
+                        <div class="market-header">
+                            <div class="market-question">${question}</div>
+                            <div class="market-odds">${yesPct}% Yes</div>
+                        </div>
+                        <div class="bar"><div class="bar-fill" style="width:${yesPct}%"></div></div>
+                        <div class="market-meta" style="margin-top:10px">
+                            <span>📊 ${formatCurrency(volume)} vol</span>
+                            <span>💧 ${formatCurrency(liquidity)} liq</span>
+                            <span>📅 ${formatDate(m.startDate)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadMovers() {
+            try {
+                const response = await fetch('https://gamma-api.polymarket.com/markets?closed=false&active=true&limit=10&order=volume24hr&ascending=false');
+                const data = await response.json();
+                const movers = data.filter(m => m.volume24hr > 1000).slice(0, 5);
+
+                document.getElementById('movers').innerHTML = movers.map(m => {
+                    const outcomes = m.outcomePrices ? JSON.parse(m.outcomePrices) : [];
+                    const yesPct = outcomes[0] ? (parseFloat(outcomes[0]) * 100).toFixed(1) : '-';
+                    return `
+                        <div class="market" onclick="window.open('https://polymarket.com/event/${m.slug}', '_blank')">
+                            <div class="market-header">
+                                <div class="market-question">${m.question}</div>
+                                <div class="market-odds">${yesPct}%</div>
+                            </div>
+                            <div class="market-meta">
+                                <span>🔥 ${formatCurrency(m.volume24hr)} 24h</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('') || '<div class="loading">No movers</div>';
+            } catch(e) {
+                console.error('Movers error:', e);
+            }
+        }
+
+        async function loadPrices() {
+            try {
+                // OKX public endpoints via CORS proxy or direct
+                const symbols = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'DOGE-USDT', 'ADA-USDT'];
+                const prices = [];
+
+                for (const sym of symbols) {
+                    try {
+                        const r = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${sym}`);
+                        const d = await r.json();
+                        if (d.data && d.data[0]) {
+                            prices.push({
+                                symbol: sym,
+                                price: parseFloat(d.data[0].last),
+                                change: ((d.data[0].last - d.data[0].open24h) / d.data[0].open24h * 100)
+                            });
+                        }
+                    } catch(e) {}
+                }
+
+                document.getElementById('prices').innerHTML = prices.map(p => `
+                    <div class="stat-card">
+                        <div class="stat-value">$${p.price.toLocaleString()}</div>
+                        <div class="stat-label">${p.symbol}</div>
+                        <div style="color:${p.change >= 0 ? '#4ade80' : '#f87171'};margin-top:5px">${p.change >= 0 ? '+' : ''}${p.change.toFixed(2)}%</div>
+                    </div>
+                `).join('');
+            } catch(e) {
+                document.getElementById('prices').innerHTML = '<div class="error">Price data unavailable</div>';
+            }
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+                renderMarkets();
+            });
+        });
+
+        // Auto-refresh every 60 seconds
+        loadMarkets();
+        loadPrices();
+        setInterval(loadMarkets, 60000);
+        setInterval(loadPrices, 60000);
+    </script>
+</body>
+</html>
