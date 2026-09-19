@@ -1,0 +1,82 @@
+name: Bounty Scout & Auto-Apply
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Scan Owocki Bounties
+        run: |
+          python3 << 'EOF'
+          import requests, json
+
+          # Scan open bounties
+          resp = requests.get(
+              "https://api.owocki.com/bounties",
+              params={"limit": 20, "status": "open"},
+              timeout=10
+          )
+
+          if resp.ok:
+              bounties = resp.json()
+              print(f"Found {len(bounties)} open bounties")
+              for b in bounties[:5]:
+                  print(f"  - {b.get('title', 'Untitled')}: {b.get('amount', 0)} USDC")
+          else:
+              print(f"Owocki API: HTTP {resp.status_code}")
+          EOF
+
+      - name: Scan Gitcoin Bounties
+        run: |
+          python3 << 'EOF'
+          import requests
+
+          # Scan Gitcoin for AI/OCR/parsing bounties
+          resp = requests.get(
+              "https://gitcoin.co/api/v0.1/bounties",
+              params={
+                  "network": "mainnet",
+                  "status": "open",
+                  "keywords": "AI,automation,OCR,parsing",
+                  "limit": 10
+              },
+              timeout=10
+          )
+
+          if resp.ok:
+              data = resp.json()
+              print(f"Gitcoin: {len(data.get('results', []))} results")
+          else:
+              print(f"Gitcoin API: HTTP {resp.status_code}")
+          EOF
+
+      - name: Create Issue for Review
+        if: always()
+        run: |
+          echo "# Bounty Scan Report $(date -u)" > scan_report.md
+          echo "" >> scan_report.md
+          echo "## Summary" >> scan_report.md
+          echo "Owocki and Gitcoin scanned for open bounties." >> scan_report.md
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add scan_report.md 2>/dev/null || true
+          git commit -m "bounty scan: $(date -u +%Y-%m-%d)" 2>/dev/null || true
+          git push 2>/dev/null || true
